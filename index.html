@@ -58,7 +58,7 @@
     const connection = new Connection(clusterApiUrl("mainnet-beta"));
     const grid = document.getElementById("grid");
     const pricePerBlock = 0.01;
-    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD"); // Replace this
+    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD");
     const selectedBlocks = new Set();
 
     if (!window.solana || !window.solana.isPhantom) {
@@ -94,9 +94,13 @@
       }
 
       try {
+        console.log("Connecting to Phantom...");
         await window.solana.connect();
         const fromPubkey = window.solana.publicKey;
         const lamports = pricePerBlock * selectedBlocks.size * 1e9;
+        console.log("From pubkey:", fromPubkey.toBase58());
+        console.log("To pubkey:", ownerWallet.toBase58());
+        console.log("Lamports:", lamports);
 
         const transaction = new Transaction().add(
           SystemProgram.transfer({
@@ -107,23 +111,28 @@
         );
 
         transaction.feePayer = fromPubkey;
-transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
-const signed = await window.solana.signTransaction(transaction);
-const txid = await connection.sendRawTransaction(signed.serialize());
+        console.log("Requesting signature from Phantom...");
+        const signed = await window.solana.signTransaction(transaction);
+        console.log("Signed:", signed);
 
-await connection.confirmTransaction(txid);
+        const txid = await connection.sendRawTransaction(signed.serialize());
+        console.log("Transaction ID:", txid);
 
+        await connection.confirmTransaction(txid);
         alert("Payment successful!");
+
         selectedBlocks.forEach(id => {
           const block = document.querySelector(`[data-id='${id}']`);
           block.classList.remove("selected");
           block.classList.add("owned");
         });
         selectedBlocks.clear();
+
       } catch (err) {
-        console.error(err);
-        alert("Transaction failed");
+        console.error("Transaction failed:", err);
+        alert("Transaction failed: " + (err.message || err));
       }
     });
   </script>
