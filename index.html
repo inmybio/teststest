@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solana Pixel Grid</title>
+  <title>Solana 1Pixel Grid</title>
   <style>
     body { font-family: sans-serif; text-align: center; }
     #container {
@@ -44,9 +44,13 @@
     <div id="grid"></div>
   </div>
 
-  <!-- Load Solana Web3.js in a compatible way for GitHub Pages -->
+  <!-- Load Buffer polyfill first -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/index.min.js"></script>
+  <!-- Load Solana Web3.js -->
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
   <script>
+    window.Buffer = buffer.Buffer;
+
     const {
       Connection,
       PublicKey,
@@ -58,7 +62,7 @@
     const connection = new Connection(clusterApiUrl("mainnet-beta"));
     const grid = document.getElementById("grid");
     const pricePerBlock = 0.01;
-    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD"); // Replace this
+    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD");
     const selectedBlocks = new Set();
 
     if (!window.solana || !window.solana.isPhantom) {
@@ -106,8 +110,13 @@
           })
         );
 
-        const { signature } = await window.solana.signAndSendTransaction(transaction);
-        await connection.confirmTransaction(signature);
+        transaction.feePayer = fromPubkey;
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+        const signed = await window.solana.signTransaction(transaction);
+        const txid = await connection.sendRawTransaction(signed.serialize());
+
+        await connection.confirmTransaction(txid);
 
         alert("Payment successful!");
         selectedBlocks.forEach(id => {
@@ -118,7 +127,7 @@
         selectedBlocks.clear();
       } catch (err) {
         console.error(err);
-        alert("Transaction failed");
+        alert("Transaction failed: " + (err.message || err));
       }
     });
   </script>
