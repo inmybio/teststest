@@ -48,97 +48,100 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/index.min.js"></script>
   <!-- Solana Web3.js -->
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+
   <script>
-    window.Buffer = buffer.Buffer; // Make Buffer globally available
+    window.onload = () => {
+      window.Buffer = buffer.Buffer; // Make Buffer globally available
 
-    const {
-      Connection,
-      PublicKey,
-      clusterApiUrl,
-      Transaction,
-      SystemProgram
-    } = solanaWeb3;
+      const {
+        Connection,
+        PublicKey,
+        clusterApiUrl,
+        Transaction,
+        SystemProgram
+      } = solanaWeb3;
 
-    const connection = new Connection(clusterApiUrl("mainnet-beta"));
-    const grid = document.getElementById("grid");
-    const pricePerBlock = 0.01;
-    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD");
-    const selectedBlocks = new Set();
+      const connection = new Connection(clusterApiUrl("mainnet-beta"));
+      const grid = document.getElementById("grid");
+      const pricePerBlock = 0.01;
+      const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD");
+      const selectedBlocks = new Set();
 
-    if (!window.solana || !window.solana.isPhantom) {
-      document.getElementById("warning").textContent = "Phantom wallet not detected. Please install Phantom to use this site.";
-    }
+      if (!window.solana || !window.solana.isPhantom) {
+        document.getElementById("warning").textContent = "Phantom wallet not detected. Please install Phantom to use this site.";
+      }
 
-    for (let i = 0; i < 10000; i++) {
-      const block = document.createElement("div");
-      block.classList.add("block");
-      block.dataset.id = i;
-      block.addEventListener("click", () => {
-        const id = block.dataset.id;
-        if (selectedBlocks.has(id)) {
-          selectedBlocks.delete(id);
-          block.classList.remove("selected");
-        } else {
-          selectedBlocks.add(id);
-          block.classList.add("selected");
+      for (let i = 0; i < 10000; i++) {
+        const block = document.createElement("div");
+        block.classList.add("block");
+        block.dataset.id = i;
+        block.addEventListener("click", () => {
+          const id = block.dataset.id;
+          if (selectedBlocks.has(id)) {
+            selectedBlocks.delete(id);
+            block.classList.remove("selected");
+          } else {
+            selectedBlocks.add(id);
+            block.classList.add("selected");
+          }
+        });
+        grid.appendChild(block);
+      }
+
+      document.getElementById("payButton").addEventListener("click", async () => {
+        if (!window.solana || !window.solana.isPhantom) {
+          alert("Phantom wallet not detected or not running.");
+          return;
+        }
+
+        if (selectedBlocks.size === 0) {
+          alert("Please select at least one block.");
+          return;
+        }
+
+        try {
+          console.log("Connecting to Phantom...");
+          await window.solana.connect();
+          const fromPubkey = window.solana.publicKey;
+          const lamports = pricePerBlock * selectedBlocks.size * 1e9;
+          console.log("From pubkey:", fromPubkey.toBase58());
+          console.log("To pubkey:", ownerWallet.toBase58());
+          console.log("Lamports:", lamports);
+
+          const transaction = new Transaction().add(
+            SystemProgram.transfer({
+              fromPubkey,
+              toPubkey: ownerWallet,
+              lamports
+            })
+          );
+
+          transaction.feePayer = fromPubkey;
+          transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+          console.log("Requesting signature from Phantom...");
+          const signed = await window.solana.signTransaction(transaction);
+          console.log("Signed:", signed);
+
+          const txid = await connection.sendRawTransaction(signed.serialize());
+          console.log("Transaction ID:", txid);
+
+          await connection.confirmTransaction(txid);
+          alert("Payment successful!");
+
+          selectedBlocks.forEach(id => {
+            const block = document.querySelector(`[data-id='${id}']`);
+            block.classList.remove("selected");
+            block.classList.add("owned");
+          });
+          selectedBlocks.clear();
+
+        } catch (err) {
+          console.error("Transaction failed:", err);
+          alert("Transaction failed: " + (err.message || err));
         }
       });
-      grid.appendChild(block);
     }
-
-    document.getElementById("payButton").addEventListener("click", async () => {
-      if (!window.solana || !window.solana.isPhantom) {
-        alert("Phantom wallet not detected or not running.");
-        return;
-      }
-
-      if (selectedBlocks.size === 0) {
-        alert("Please select at least one block.");
-        return;
-      }
-
-      try {
-        console.log("Connecting to Phantom...");
-        await window.solana.connect();
-        const fromPubkey = window.solana.publicKey;
-        const lamports = pricePerBlock * selectedBlocks.size * 1e9;
-        console.log("From pubkey:", fromPubkey.toBase58());
-        console.log("To pubkey:", ownerWallet.toBase58());
-        console.log("Lamports:", lamports);
-
-        const transaction = new Transaction().add(
-          SystemProgram.transfer({
-            fromPubkey,
-            toPubkey: ownerWallet,
-            lamports
-          })
-        );
-
-        transaction.feePayer = fromPubkey;
-        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-        console.log("Requesting signature from Phantom...");
-        const signed = await window.solana.signTransaction(transaction);
-        console.log("Signed:", signed);
-
-        const txid = await connection.sendRawTransaction(signed.serialize());
-        console.log("Transaction ID:", txid);
-
-        await connection.confirmTransaction(txid);
-        alert("Payment successful!");
-
-        selectedBlocks.forEach(id => {
-          const block = document.querySelector(`[data-id='${id}']`);
-          block.classList.remove("selected");
-          block.classList.add("owned");
-        });
-        selectedBlocks.clear();
-
-      } catch (err) {
-        console.error("Transaction failed:", err);
-        alert("Transaction failed: " + (err.message || err));
-      }
-    });
   </script>
 </body>
 </html>
