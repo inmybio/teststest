@@ -106,8 +106,13 @@
           })
         );
 
-        const { signature } = await window.solana.signAndSendTransaction(transaction);
-        await connection.confirmTransaction(signature);
+        transaction.feePayer = fromPubkey;
+transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+const signed = await window.solana.signTransaction(transaction);
+const txid = await connection.sendRawTransaction(signed.serialize());
+
+await connection.confirmTransaction(txid);
 
         alert("Payment successful!");
         selectedBlocks.forEach(id => {
