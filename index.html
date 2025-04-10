@@ -43,13 +43,22 @@
   <div id="container">
     <div id="grid"></div>
   </div>
-  <script type="module">
-    import { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } from "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js";
+
+  <!-- Load Solana Web3.js in a compatible way for GitHub Pages -->
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+  <script>
+    const {
+      Connection,
+      PublicKey,
+      clusterApiUrl,
+      Transaction,
+      SystemProgram
+    } = solanaWeb3;
 
     const connection = new Connection(clusterApiUrl("mainnet-beta"));
     const grid = document.getElementById("grid");
     const pricePerBlock = 0.01;
-    const ownerWallet = new PublicKey("YOUR_WALLET_ADDRESS"); // Replace with your wallet
+    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD"); // Replace this
     const selectedBlocks = new Set();
 
     if (!window.solana || !window.solana.isPhantom) {
