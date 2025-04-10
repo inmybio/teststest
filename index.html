@@ -26,15 +26,20 @@
       border: 1px solid #ccc;
       cursor: pointer;
     }
+    .selected { background: #00ccff; }
     .owned { background: #ff9900; }
-    #info { margin: 20px; }
-    #warning { color: red; font-weight: bold; margin-top: 10px; }
+    #info, #warning, #controls { margin: 20px; }
+    #warning { color: red; font-weight: bold; }
+    #payButton { padding: 10px 20px; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Solana Pixel Board</h1>
-  <div id="info">Click blocks to select and pay with Solana!</div>
+  <div id="info">Click blocks to select and pay with Solana (0.01 SOL per block)</div>
   <div id="warning"></div>
+  <div id="controls">
+    <button id="payButton">Pay for Selected Blocks</button>
+  </div>
   <div id="container">
     <div id="grid"></div>
   </div>
@@ -45,6 +50,7 @@
     const grid = document.getElementById("grid");
     const pricePerBlock = 0.01;
     const ownerWallet = new PublicKey("YOUR_WALLET_ADDRESS"); // Replace with your wallet
+    const selectedBlocks = new Set();
 
     if (!window.solana || !window.solana.isPhantom) {
       document.getElementById("warning").textContent = "Phantom wallet not detected. Please install Phantom to use this site.";
@@ -54,36 +60,58 @@
       const block = document.createElement("div");
       block.classList.add("block");
       block.dataset.id = i;
-      block.addEventListener("click", async () => {
-        if (window.solana && window.solana.isPhantom) {
-          try {
-            await window.solana.connect();
-            const fromPubkey = window.solana.publicKey;
-            const lamports = pricePerBlock * 1e9;
-
-            const transaction = new Transaction().add(
-              SystemProgram.transfer({
-                fromPubkey,
-                toPubkey: ownerWallet,
-                lamports
-              })
-            );
-
-            const { signature } = await window.solana.signAndSendTransaction(transaction);
-            await connection.confirmTransaction(signature);
-
-            alert("Payment successful!");
-            block.classList.add("owned");
-          } catch (err) {
-            console.error(err);
-            alert("Transaction failed");
-          }
+      block.addEventListener("click", () => {
+        const id = block.dataset.id;
+        if (selectedBlocks.has(id)) {
+          selectedBlocks.delete(id);
+          block.classList.remove("selected");
         } else {
-          alert("Phantom wallet not detected or not running.");
+          selectedBlocks.add(id);
+          block.classList.add("selected");
         }
       });
       grid.appendChild(block);
     }
+
+    document.getElementById("payButton").addEventListener("click", async () => {
+      if (!window.solana || !window.solana.isPhantom) {
+        alert("Phantom wallet not detected or not running.");
+        return;
+      }
+
+      if (selectedBlocks.size === 0) {
+        alert("Please select at least one block.");
+        return;
+      }
+
+      try {
+        await window.solana.connect();
+        const fromPubkey = window.solana.publicKey;
+        const lamports = pricePerBlock * selectedBlocks.size * 1e9;
+
+        const transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey,
+            toPubkey: ownerWallet,
+            lamports
+          })
+        );
+
+        const { signature } = await window.solana.signAndSendTransaction(transaction);
+        await connection.confirmTransaction(signature);
+
+        alert("Payment successful!");
+        selectedBlocks.forEach(id => {
+          const block = document.querySelector(`[data-id='${id}']`);
+          block.classList.remove("selected");
+          block.classList.add("owned");
+        });
+        selectedBlocks.clear();
+      } catch (err) {
+        console.error(err);
+        alert("Transaction failed");
+      }
+    });
   </script>
 </body>
 </html>
