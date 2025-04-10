@@ -44,9 +44,13 @@
     <div id="grid"></div>
   </div>
 
-  <!-- Load Solana Web3.js in a compatible way for GitHub Pages -->
+  <!-- Polyfill for Buffer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/index.min.js"></script>
+  <!-- Solana Web3.js -->
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
   <script>
+    window.Buffer = buffer.Buffer; // Make Buffer globally available
+
     const {
       Connection,
       PublicKey,
