@@ -12,6 +12,9 @@
       border: 3px solid black;
       box-shadow: 0 0 10px rgba(0,0,0,0.2);
       margin-top: 20px;
+      overflow: auto;
+      max-width: 90vw;
+      max-height: 90vh;
     }
     #grid {
       display: grid;
@@ -19,6 +22,8 @@
       grid-template-rows: repeat(100, 10px);
       width: 1000px;
       height: 1000px;
+      transform: scale(0.75);
+      transform-origin: top left;
     }
     .block {
       width: 10px; height: 10px;
@@ -31,6 +36,7 @@
     #info, #warning, #controls { margin: 20px; }
     #warning { color: red; font-weight: bold; }
     #payButton { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    #note { font-size: 14px; color: #777; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -40,6 +46,7 @@
   <div id="controls">
     <button id="payButton">Pay for Selected Blocks</button>
   </div>
+  <div id="note">Scroll inside the box to view all blocks</div>
   <div id="container">
     <div id="grid"></div>
   </div>
