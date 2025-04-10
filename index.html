@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solana Pixel Grid</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    #grid { display: grid; grid-template-columns: repeat(100, 10px); width: 1000px; margin: 0 auto; }
+    .block {
+      width: 10px; height: 10px;
+      background: lightgray;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .owned { background: #ff9900; }
+    #info { margin: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Solana Pixel Board</h1>
+  <div id="info">Click blocks to select and pay with Solana!</div>
+  <div id="grid"></div>
+  <script type="module">
+    import { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } from "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js";
+
+    const connection = new Connection(clusterApiUrl("mainnet-beta"));
+    const grid = document.getElementById("grid");
+    const pricePerBlock = 0.01;
+    const ownerWallet = new PublicKey("YOUR_WALLET_ADDRESS"); // Replace with your wallet
+
+    // Create 100x100 grid (10,000 blocks)
+    for (let i = 0; i < 10000; i++) {
+      const block = document.createElement("div");
+      block.classList.add("block");
+      block.dataset.id = i;
+      block.addEventListener("click", async () => {
+        if (window.solana && window.solana.isPhantom) {
+          try {
+            await window.solana.connect();
+            const fromPubkey = window.solana.publicKey;
+            const lamports = pricePerBlock * 1e9;
+
+            const transaction = new Transaction().add(
+              SystemProgram.transfer({
+                fromPubkey,
+                toPubkey: ownerWallet,
+                lamports
+              })
+            );
+
+            const { signature } = await window.solana.signAndSendTransaction(transaction);
+            await connection.confirmTransaction(signature);
+
+            alert("Payment successful!");
+            block.classList.add("owned");
+            // Here you'd call your backend to save block ownership
+          } catch (err) {
+            console.error(err);
+            alert("Transaction failed");
+          }
+        } else {
+          alert("Phantom wallet not detected");
+        }
+      });
+      grid.appendChild(block);
+    }
+  </script>
+</body>
+</html>
