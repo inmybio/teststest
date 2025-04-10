@@ -16,6 +16,9 @@
     #grid {
       display: grid;
       grid-template-columns: repeat(100, 10px);
+      grid-template-rows: repeat(100, 10px);
+      width: 1000px;
+      height: 1000px;
     }
     .block {
       width: 10px; height: 10px;
@@ -25,11 +28,13 @@
     }
     .owned { background: #ff9900; }
     #info { margin: 20px; }
+    #warning { color: red; font-weight: bold; margin-top: 10px; }
   </style>
 </head>
 <body>
   <h1>Solana Pixel Board</h1>
   <div id="info">Click blocks to select and pay with Solana!</div>
+  <div id="warning"></div>
   <div id="container">
     <div id="grid"></div>
   </div>
@@ -41,7 +46,10 @@
     const pricePerBlock = 0.01;
     const ownerWallet = new PublicKey("YOUR_WALLET_ADDRESS"); // Replace with your wallet
 
-    // Create 100x100 grid (10,000 blocks)
+    if (!window.solana || !window.solana.isPhantom) {
+      document.getElementById("warning").textContent = "Phantom wallet not detected. Please install Phantom to use this site.";
+    }
+
     for (let i = 0; i < 10000; i++) {
       const block = document.createElement("div");
       block.classList.add("block");
@@ -66,13 +74,12 @@
 
             alert("Payment successful!");
             block.classList.add("owned");
-            // Here you'd call your backend to save block ownership
           } catch (err) {
             console.error(err);
             alert("Transaction failed");
           }
         } else {
-          alert("Phantom wallet not detected");
+          alert("Phantom wallet not detected or not running.");
         }
       });
       grid.appendChild(block);
