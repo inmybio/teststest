@@ -6,7 +6,17 @@
   <title>Solana Pixel Grid</title>
   <style>
     body { font-family: sans-serif; text-align: center; }
-    #grid { display: grid; grid-template-columns: repeat(100, 10px); width: 1000px; margin: 0 auto; }
+    #container {
+      display: inline-block;
+      padding: 10px;
+      border: 3px solid black;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      margin-top: 20px;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(100, 10px);
+    }
     .block {
       width: 10px; height: 10px;
       background: lightgray;
@@ -20,7 +30,9 @@
 <body>
   <h1>Solana Pixel Board</h1>
   <div id="info">Click blocks to select and pay with Solana!</div>
-  <div id="grid"></div>
+  <div id="container">
+    <div id="grid"></div>
+  </div>
   <script type="module">
     import { Connection, PublicKey, clusterApiUrl, Transaction, SystemProgram } from "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js";
 
