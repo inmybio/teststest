@@ -1,135 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solana 1Pixel Grid</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; }
-    #container {
-      display: inline-block;
-      padding: 10px;
-      border: 3px solid black;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      margin-top: 20px;
-    }
-    #grid {
-      display: grid;
-      grid-template-columns: repeat(100, 10px);
-      grid-template-rows: repeat(100, 10px);
-      width: 1000px;
-      height: 1000px;
-    }
-    .block {
-      width: 10px; height: 10px;
-      background: lightgray;
-      border: 1px solid #ccc;
-      cursor: pointer;
-    }
-    .selected { background: #00ccff; }
-    .owned { background: #ff9900; }
-    #info, #warning, #controls { margin: 20px; }
-    #warning { color: red; font-weight: bold; }
-    #payButton { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PNG Drop – drag & drop to convert images to PNG</title>
+<meta name="description" content="Drag & drop any common image file (JPG, JPEG, WEBP, AVIF, HEIC*, BMP, GIF, SVG, etc.) and instantly get a PNG you can download or drag back out." />
+<style>
+:root {
+--bg: #0b0d10; --panel: #11141a; --muted: #9aa3af; --text: #e5e7eb; --accent: #60a5fa;
+--ring: #1f2937; --ok: #10b981; --warn: #f59e0b; --err: #ef4444;
+}
+* { box-sizing: border-box }
+html, body { height: 100% }
+body {
+margin: 0; font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+color: var(--text); background: radial-gradient(1200px 800px at 10% -10%, #1a2233, transparent), var(--bg);
+display: grid; place-items: start center; padding: 32px 20px 80px;
+}
+header { width: 100%; max-width: 1080px; margin-bottom: 16px; }
+h1 { margin: 0 0 8px; font-size: clamp(24px, 2.6vw, 34px); letter-spacing: 0.3px }
+p.sub { margin: 0; color: var(--muted) }
+
+
+.app { width: 100%; max-width: 1080px }
+.zone {
+border: 2px dashed #263244; background: linear-gradient(180deg, #111827, #0f172a);
+border-radius: 20px; padding: 28px; display: grid; gap: 18px; place-items: center;
+outline: 2px solid transparent; transition: border-color 120ms, outline-color 120ms, transform 120ms;
+}
+.zone.dragover { border-color: var(--accent); outline-color: color-mix(in oklab, var(--accent) 30%, transparent); transform: translateY(-2px) }
+.zone .big { font-size: clamp(16px, 1.6vw, 18px); color: var(--muted) }
+
+
+.controls { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center }
+.btn {
+appearance: none; border: 1px solid #253045; background: #0e1623; color: var(--text);
+padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600;
+transition: transform 120ms ease, border-color 120ms ease; text-decoration: none; display:inline-flex; align-items:center; gap:8px;
+}
+.btn:hover { transform: translateY(-1px); border-color: var(--accent) }
+.btn.primary { background: linear-gradient(180deg, #1f2937, #0b1320); border-color: #334155 }
+
+
+input[type=file] { display:none }
+
+
+.grid { margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px }
+.card { background: var(--panel); border: 1px solid #202838; border-radius: 16px; overflow: clip; display:flex; flex-direction:column }
+.thumb { width: 100%; aspect-ratio: 1.6/1; background: #0d1420; display:grid; place-items:center }
+.thumb img { max-width: 100%; max-height: 100%; object-fit: contain }
+.meta { padding: 12px; display: grid; gap: 8px }
+.meta .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.row { display:flex; gap:8px; flex-wrap:wrap }
+.chip { font-size: 12px; color: var(--muted); padding: 4px 8px; border-radius: 999px; border:1px solid #27354b }
+
+
+.actions { display:flex; gap:10px; flex-wrap:wrap }
+.dragpill { user-select: none; padding: 8px 10px; border-radius: 999px; background: #0c1727; border:1px dashed #2a3a54; color: var(--text); cursor: grab }
+.dragpill:active { cursor: grabbing }
+
+
+.note { color: var(--muted); font-size: 13px; margin-top: 12px; text-align:center }
+footer { margin-top: 22px; color: var(--muted); font-size: 12px; text-align:center }
+code.kbd { background:#0d1522; padding:2px 6px; border:1px solid #24324a; border-radius:6px }
+.hidden { display:none !important }
+</style>
 </head>
 <body>
-  <h1>Solana Pixel Board</h1>
-  <div id="info">Click blocks to select and pay with Solana (0.01 SOL per block)</div>
-  <div id="warning"></div>
-  <div id="controls">
-    <button id="payButton">Pay for Selected Blocks</button>
-  </div>
-  <div id="container">
-    <div id="grid"></div>
-  </div>
+<header>
+<h1>PNG Drop</h1>
+<p class="sub">Drag & drop images → instantly get PNGs. Then <em>drag the result back out</em> or click download. No uploads, 100% in‑browser.</p>
+</header>
 
-  <!-- Load Buffer polyfill first -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/index.min.js"></script>
-  <!-- Load Solana Web3.js -->
-  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-  <script>
-    window.Buffer = buffer.Buffer;
 
-    const {
-      Connection,
-      PublicKey,
-      clusterApiUrl,
-      Transaction,
-      SystemProgram
-    } = solanaWeb3;
+<main class="app">
+<section id="dropzone" class="zone" aria-label="Drop files here to convert to PNG">
+<div class="big">Drop files here, or</div>
+<div class="controls">
+<label class="btn primary" for="fileInput">Choose files</label>
+<button class="btn" id="demoBtn" type="button">Try a demo image</button>
+</div>
+<input id="fileInput" type="file" accept="image/*,.heic,.heif,.avif,.webp,.svg" multiple />
+<div class="note">Supported: JPG • JPEG • PNG • WEBP • AVIF • GIF* • BMP • SVG • HEIC/HEIF* <br/>*GIF/APNG convert first frame. HEIC needs modern browser; see notes below.</div>
+</section>
 
-    const connection = new Connection(clusterApiUrl("mainnet-beta"));
-    const grid = document.getElementById("grid");
-    const pricePerBlock = 0.01;
-    const ownerWallet = new PublicKey("9LgWeg8SuSN4CkXuUfVCZpxxunwV2LhQzZNSkvnr9ZVD");
-    const selectedBlocks = new Set();
 
-    if (!window.solana || !window.solana.isPhantom) {
-      document.getElementById("warning").textContent = "Phantom wallet not detected. Please install Phantom to use this site.";
-    }
+<section id="results" class="grid" aria-live="polite"></section>
 
-    for (let i = 0; i < 10000; i++) {
-      const block = document.createElement("div");
-      block.classList.add("block");
-      block.dataset.id = i;
-      block.addEventListener("click", () => {
-        const id = block.dataset.id;
-        if (selectedBlocks.has(id)) {
-          selectedBlocks.delete(id);
-          block.classList.remove("selected");
-        } else {
-          selectedBlocks.add(id);
-          block.classList.add("selected");
-        }
-      });
-      grid.appendChild(block);
-    }
 
-    document.getElementById("payButton").addEventListener("click", async () => {
-      if (!window.solana || !window.solana.isPhantom) {
-        alert("Phantom wallet not detected or not running.");
-        return;
-      }
+<footer>
+Tip: you can drag the <span class="chip">Drag‑out</span> pill to your Desktop/Downloads to save the PNG. Also works by dragging into apps that accept files.
+<br/>Made for GitHub Pages – single file, no server required.
+</footer>
+</main>
 
-      if (selectedBlocks.size === 0) {
-        alert("Please select at least one block.");
-        return;
-      }
 
-      try {
-        await window.solana.connect();
-        const fromPubkey = window.solana.publicKey;
-        const lamports = pricePerBlock * selectedBlocks.size * 1e9;
+<!-- Optional HEIC/HEIF support via WASM; safe to omit if you don’t need HEIC. -->
+<script defer src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-        const transaction = new Transaction().add(
-          SystemProgram.transfer({
-            fromPubkey,
-            toPubkey: ownerWallet,
-            lamports
-          })
-        );
 
-        transaction.feePayer = fromPubkey;
-        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const results = document.getElementById('results');
+const demoBtn = document.getElementById('demoBtn');
 
-        const signed = await window.solana.signTransaction(transaction);
-        const txid = await connection.sendRawTransaction(signed.serialize());
 
-        await connection.confirmTransaction(txid);
+const isHeicName = (name = '') => /\.(heic|heif)$/i.test(name);
 
-        alert("Payment successful!");
-        selectedBlocks.forEach(id => {
-          const block = document.querySelector(`[data-id='${id}']`);
-          block.classList.remove("selected");
-          block.classList.add("owned");
-        });
-        selectedBlocks.clear();
-      } catch (err) {
-        console.error(err);
-        alert("Transaction failed: " + (err.message || err));
-      }
-    });
-  </script>
-</body>
+
+// --- Drag & drop wiring ---
+['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; dropzone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); }));
+dropzone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+
+demoBtn.addEventListener('click', () => {
+// create a demo JPEG in-memory
+const canvas = document.createElement('canvas');
 </html>
