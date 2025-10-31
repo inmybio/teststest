@@ -8,6 +8,8 @@
     body {font-family: system-ui, sans-serif; background:#0b0d10; color:white; margin:0; display:flex; flex-direction:column; align-items:center; padding:30px;}
     h1 {margin-bottom:8px;}
     p {color:#aaa; margin-top:0;}
+    #dropzone {border:2px dashed #3a3f4b; border-radius:16px; padding:40px; width:90%; max-width:500px; text-align:center; cursor:pointer; transition:0.3s; z-index:30; position:relative;}
+    #dropzone.dragover {border-color:#60a5fa; background:#111827;}
     #results img {position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:contain; background:black; z-index:10;}
     #results .btn {position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1f2937; color:white; border:none; border-radius:8px; padding:10px 20px; text-decoration:none; font-size:18px; z-index:20;}
     #results .btn:hover {background:#374151;}
@@ -17,36 +19,51 @@
   <h1>PNG Drop</h1>
   <p>Drag & drop any image to convert it to PNG and display it full screen. Drop another image to replace it.</p>
 
+  <div id="dropzone">Drop image files here or click to upload</div>
+  <input id="fileInput" type="file" accept="image/*" multiple style="display:none">
   <div id="results"></div>
 
   <script>
+    const dropzone = document.getElementById('dropzone');
+    const input = document.getElementById('fileInput');
     const results = document.getElementById('results');
 
-    document.addEventListener('dragover', e => {
+    dropzone.addEventListener('click',()=>input.click());
+
+    // Handle drag events anywhere, not just on the dropzone
+    document.addEventListener('dragover',e=>{
       e.preventDefault();
+      dropzone.classList.add('dragover');
     });
 
-    document.addEventListener('drop', e => {
+    document.addEventListener('dragleave',e=>{
+      dropzone.classList.remove('dragover');
+    });
+
+    document.addEventListener('drop',e=>{
       e.preventDefault();
-      if (e.dataTransfer && e.dataTransfer.files.length) {
+      dropzone.classList.remove('dragover');
+      if(e.dataTransfer && e.dataTransfer.files.length) {
         handleFiles(e.dataTransfer.files);
       }
     });
 
-    function handleFiles(files) {
+    input.addEventListener('change',e=>handleFiles(e.target.files));
+
+    function handleFiles(files){
       if (!files.length) return;
-      const file = files[0];
+      const file = files[0]; // always replace image
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = ()=>{
         const img = new Image();
-        img.onload = () => {
+        img.onload = ()=>{
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
           const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
+          ctx.drawImage(img,0,0);
           const previewUrl = canvas.toDataURL('image/png');
-          canvas.toBlob(blob => {
+          canvas.toBlob(blob=>{
             const downloadUrl = URL.createObjectURL(blob);
             results.innerHTML = '';
             const preview = document.createElement('img');
