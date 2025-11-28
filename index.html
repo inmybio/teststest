@@ -1,52 +1,59 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Seamless Video Randomizer</title>
+<title>Seamless Video Randomizer (Single Group + Drag-Drop)</title>
 <style>
     body{ background:#111; color:#fff; font-family:Arial; text-align:center; }
-    input{ margin:5px; width:80%; padding:8px; }
-    button{ padding:10px 20px; font-size:18px; margin:12px; cursor:pointer; }
-    video{ position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:70%; background:black; }
+    h2{margin-top:40px;}
+    #dropzone{
+        width:80%; margin:auto; padding:40px; border:3px dashed #555;
+        border-radius:10px; font-size:18px; color:#ccc;
+    }
+    #dropzone.dragover{ border-color:#0f0; color:#0f0; }
+    button{ padding:10px 20px; font-size:18px; margin-top:25px; cursor:pointer; }
+    video{
+        position:absolute; top:50%; left:50%;
+        transform:translate(-50%, -50%);
+        width:70%; background:black;
+    }
 </style>
 </head>
 <body>
 
-<h2>Upload First 3 Videos (Group A)</h2>
-<input type="file" accept="video/*" id="gA1"><br>
-<input type="file" accept="video/*" id="gA2"><br>
-<input type="file" accept="video/*" id="gA3"><br>
+<h2>Drag & Drop Videos Below</h2>
+<div id="dropzone">Drop videos here</div>
 
-<h2>Upload Second 3 Videos (Group B)</h2>
-<input type="file" accept="video/*" id="gB1"><br>
-<input type="file" accept="video/*" id="gB2"><br>
-<input type="file" accept="video/*" id="gB3"><br>
-
-<button onclick="startLoop()">Start Loop</button>
+<button onclick="startLoop()">Start</button>
 <button onclick="stopLoop()">Stop</button>
 
-<!-- Two overlapping players -->
 <video id="v1" preload="auto"></video>
 <video id="v2" preload="auto"></video>
 
 <script>
-let groupA = [];
-let groupB = [];
+let videos = [];   // storage
 let playing = false;
 
 let v1 = document.getElementById("v1");
 let v2 = document.getElementById("v2");
-let active = v1;  // which video is currently audible
-let nextVid = v2; // preloads next
+let active = v1;
+let nextVid = v2;
+
+// Drag & Drop Handling
+const box = document.getElementById("dropzone");
+
+box.ondragover = e => { e.preventDefault(); box.classList.add("dragover"); };
+box.ondragleave = () => box.classList.remove("dragover");
+
+box.ondrop = e =>{
+    e.preventDefault(); box.classList.remove("dragover");
+    for(let f of e.dataTransfer.files){
+        if(f.type.includes("video")) videos.push(URL.createObjectURL(f));
+    }
+    box.textContent = videos.length+" video(s) loaded";
+};
 
 function startLoop(){
-    groupA = load(["gA1","gA2","gA3"]);
-    groupB = load(["gB1","gB2","gB3"]);
-
-    if(groupA.length<3 || groupB.length<3){
-        alert("Upload 3 videos in each group");
-        return;
-    }
-
+    if(videos.length < 1){ alert("Drop at least one video"); return; }
     playing = true;
     playCycle();
 }
@@ -56,46 +63,27 @@ function stopLoop(){
     v1.pause(); v2.pause();
 }
 
-function load(ids){
-    return ids.map(id=>{
-        let f = document.getElementById(id).files[0];
-        return f ? URL.createObjectURL(f) : null;
-    }).filter(v=>v);
-}
-
-// loop logic with preloading
 async function playCycle(){
     while(playing){
-        let aSet = shuffle([...groupA]);
-        for(let file of aSet){
+        shuffle(videos);
+
+        for(let file of videos){
             if(!playing) return;
             await seamlessPlay(file);
         }
-
-        let bFile = groupB[Math.floor(Math.random()*groupB.length)];
-        if(!playing) return;
-        await seamlessPlay(bFile);
     }
 }
 
-// core logic
 function seamlessPlay(src){
     return new Promise(resolve=>{
 
-        // preload into the inactive player
         nextVid.src = src;
         nextVid.load();
 
-        // switch when nextVid is ready
         nextVid.oncanplay = ()=>{
-            // volume crossfade optional (set to zero for instant cut)
-            active.volume=1; nextVid.volume=1;
-
-            // start instantly
-            nextVid.play();
             active.pause();
+            nextVid.play();
 
-            // swap roles
             [active,nextVid] = [nextVid,active];
 
             active.onended = ()=>resolve();
@@ -103,13 +91,12 @@ function seamlessPlay(src){
     });
 }
 
-// randomizer
-function shuffle(arr){
-    for(let i=arr.length-1;i>0;i--){
-        let j=Math.floor(Math.random()*(i+1));
-        [arr[i],arr[j]]=[arr[j],arr[i]];
+function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+        let j=Math.random()* (i+1) | 0;
+        [a[i],a[j]]=[a[j],a[i]];
     }
-    return arr;
+    return a;
 }
 </script>
 
