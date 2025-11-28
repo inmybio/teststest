@@ -1,85 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PNG Drop</title>
-  <style>
-    body {font-family: system-ui, sans-serif; background:#0b0d10; color:white; margin:0; display:flex; flex-direction:column; align-items:center; padding:30px;}
-    h1 {margin-bottom:8px;}
-    p {color:#aaa; margin-top:0;}
-    #dropzone {border:2px dashed #3a3f4b; border-radius:16px; padding:40px; width:90%; max-width:500px; text-align:center; cursor:pointer; transition:0.3s; z-index:30; position:relative;}
-    #dropzone.dragover {border-color:#60a5fa; background:#111827;}
-    #results img {position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:contain; background:black; z-index:10;}
-    #results .btn {position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1f2937; color:white; border:none; border-radius:8px; padding:10px 20px; text-decoration:none; font-size:18px; z-index:20;}
-    #results .btn:hover {background:#374151;}
-  </style>
+<title>Video Randomizer Player</title>
+<style>
+    body{ background:#111; color:#fff; font-family:Arial; text-align:center; }
+    input{ margin:5px; width:80%; padding:8px; }
+    button{ padding:10px 20px; font-size:18px; margin:12px; cursor:pointer; }
+    video{ width:70%; margin-top:20px; background:black; }
+</style>
 </head>
 <body>
-  <h1>PNG Drop</h1>
-  <p>Drag & drop any image to convert it to PNG and display it full screen. Drop another image to replace it.</p>
 
-  <div id="dropzone">Drop image files here or click to upload</div>
-  <input id="fileInput" type="file" accept="image/*" multiple style="display:none">
-  <div id="results"></div>
+<h2>Upload First 3 Videos (Group A)</h2>
+<input type="file" accept="video/*" id="gA1"><br>
+<input type="file" accept="video/*" id="gA2"><br>
+<input type="file" accept="video/*" id="gA3"><br>
 
-  <script>
-    const dropzone = document.getElementById('dropzone');
-    const input = document.getElementById('fileInput');
-    const results = document.getElementById('results');
+<h2>Upload Second 3 Videos (Group B)</h2>
+<input type="file" accept="video/*" id="gB1"><br>
+<input type="file" accept="video/*" id="gB2"><br>
+<input type="file" accept="video/*" id="gB3"><br>
 
-    dropzone.addEventListener('click',()=>input.click());
+<button onclick="startLoop()">Start Loop</button>
+<button onclick="stopLoop()">Stop</button>
 
-    // Handle drag events anywhere, not just on the dropzone
-    document.addEventListener('dragover',e=>{
-      e.preventDefault();
-      dropzone.classList.add('dragover');
-    });
+<video id="player" controls autoplay></video>
 
-    document.addEventListener('dragleave',e=>{
-      dropzone.classList.remove('dragover');
-    });
+<script>
+let groupA = [];
+let groupB = [];
+let playing = false;
+let player = document.getElementById("player");
 
-    document.addEventListener('drop',e=>{
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if(e.dataTransfer && e.dataTransfer.files.length) {
-        handleFiles(e.dataTransfer.files);
-      }
-    });
+function startLoop(){
+    groupA = getFiles(["gA1","gA2","gA3"]);
+    groupB = getFiles(["gB1","gB2","gB3"]);
 
-    input.addEventListener('change',e=>handleFiles(e.target.files));
-
-    function handleFiles(files){
-      if (!files.length) return;
-      const file = files[0]; // always replace image
-      const reader = new FileReader();
-      reader.onload = ()=>{
-        const img = new Image();
-        img.onload = ()=>{
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img,0,0);
-          const previewUrl = canvas.toDataURL('image/png');
-          canvas.toBlob(blob=>{
-            const downloadUrl = URL.createObjectURL(blob);
-            results.innerHTML = '';
-            const preview = document.createElement('img');
-            preview.src = previewUrl;
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = file.name.replace(/\.[^.]+$/, '') + '.png';
-            link.className = 'btn';
-            link.textContent = 'Download PNG';
-            results.append(preview, link);
-          }, 'image/png');
-        }
-        img.src = reader.result;
-      }
-      reader.readAsDataURL(file);
+    if(groupA.length < 3 || groupB.length < 3){
+        alert("Upload 3 videos in each group first");
+        return;
     }
-  </script>
+
+    playing = true;
+    playCycle();
+}
+
+function stopLoop(){
+    playing = false;
+    player.pause();
+}
+
+function getFiles(ids){
+    return ids.map(id => {
+        let file = document.getElementById(id).files[0];
+        return file ? URL.createObjectURL(file) : null;
+    }).filter(v=>v);
+}
+
+// Plays A1-A2-A3 in random order then one video from B
+async function playCycle(){
+    while(playing){
+        let aRandom = shuffle([...groupA]);
+        for(let vid of aRandom){
+            if(!playing) return;
+            await playVideo(vid);
+        }
+
+        let bVid = groupB[Math.floor(Math.random()*groupB.length)];
+        if(!playing) return;
+        await playVideo(bVid);
+    }
+}
+
+// Promise-based video playback
+function playVideo(src){
+    return new Promise(resolve=>{
+        player.src = src;
+        player.onended = ()=>resolve();
+        player.play();
+    });
+}
+
+// Fisher-Yates shuffle
+function shuffle(arr){
+    for(let i = arr.length-1; i>0; i--){
+        let j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+}
+</script>
+
 </body>
 </html>
