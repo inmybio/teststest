@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Video Randomizer Player</title>
+<title>Seamless Video Randomizer</title>
 <style>
     body{ background:#111; color:#fff; font-family:Arial; text-align:center; }
     input{ margin:5px; width:80%; padding:8px; }
     button{ padding:10px 20px; font-size:18px; margin:12px; cursor:pointer; }
-    video{ width:70%; margin-top:20px; background:black; }
+    video{ position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:70%; background:black; }
 </style>
 </head>
 <body>
@@ -24,20 +24,26 @@
 <button onclick="startLoop()">Start Loop</button>
 <button onclick="stopLoop()">Stop</button>
 
-<video id="player" controls autoplay></video>
+<!-- Two overlapping players -->
+<video id="v1" preload="auto"></video>
+<video id="v2" preload="auto"></video>
 
 <script>
 let groupA = [];
 let groupB = [];
 let playing = false;
-let player = document.getElementById("player");
+
+let v1 = document.getElementById("v1");
+let v2 = document.getElementById("v2");
+let active = v1;  // which video is currently audible
+let nextVid = v2; // preloads next
 
 function startLoop(){
-    groupA = getFiles(["gA1","gA2","gA3"]);
-    groupB = getFiles(["gB1","gB2","gB3"]);
+    groupA = load(["gA1","gA2","gA3"]);
+    groupB = load(["gB1","gB2","gB3"]);
 
-    if(groupA.length < 3 || groupB.length < 3){
-        alert("Upload 3 videos in each group first");
+    if(groupA.length<3 || groupB.length<3){
+        alert("Upload 3 videos in each group");
         return;
     }
 
@@ -47,44 +53,60 @@ function startLoop(){
 
 function stopLoop(){
     playing = false;
-    player.pause();
+    v1.pause(); v2.pause();
 }
 
-function getFiles(ids){
-    return ids.map(id => {
-        let file = document.getElementById(id).files[0];
-        return file ? URL.createObjectURL(file) : null;
+function load(ids){
+    return ids.map(id=>{
+        let f = document.getElementById(id).files[0];
+        return f ? URL.createObjectURL(f) : null;
     }).filter(v=>v);
 }
 
-// Plays A1-A2-A3 in random order then one video from B
+// loop logic with preloading
 async function playCycle(){
     while(playing){
-        let aRandom = shuffle([...groupA]);
-        for(let vid of aRandom){
+        let aSet = shuffle([...groupA]);
+        for(let file of aSet){
             if(!playing) return;
-            await playVideo(vid);
+            await seamlessPlay(file);
         }
 
-        let bVid = groupB[Math.floor(Math.random()*groupB.length)];
+        let bFile = groupB[Math.floor(Math.random()*groupB.length)];
         if(!playing) return;
-        await playVideo(bVid);
+        await seamlessPlay(bFile);
     }
 }
 
-// Promise-based video playback
-function playVideo(src){
+// core logic
+function seamlessPlay(src){
     return new Promise(resolve=>{
-        player.src = src;
-        player.onended = ()=>resolve();
-        player.play();
+
+        // preload into the inactive player
+        nextVid.src = src;
+        nextVid.load();
+
+        // switch when nextVid is ready
+        nextVid.oncanplay = ()=>{
+            // volume crossfade optional (set to zero for instant cut)
+            active.volume=1; nextVid.volume=1;
+
+            // start instantly
+            nextVid.play();
+            active.pause();
+
+            // swap roles
+            [active,nextVid] = [nextVid,active];
+
+            active.onended = ()=>resolve();
+        };
     });
 }
 
-// Fisher-Yates shuffle
+// randomizer
 function shuffle(arr){
-    for(let i = arr.length-1; i>0; i--){
-        let j = Math.floor(Math.random()*(i+1));
+    for(let i=arr.length-1;i>0;i--){
+        let j=Math.floor(Math.random()*(i+1));
         [arr[i],arr[j]]=[arr[j],arr[i]];
     }
     return arr;
