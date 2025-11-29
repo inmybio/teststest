@@ -1,16 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Seamless Video Randomizer (Single Group + Drag-Drop)</title>
+<title>Seamless Video Randomizer (Single Group)</title>
+
 <style>
-    body{ background:#111; color:#fff; font-family:Arial; text-align:center; }
-    h2{margin-top:40px;}
+    body{ background:#111; color:#fff; font-family:Arial; text-align:center; margin:0; padding:0;}
+    h2{margin-top:35px;}
+
     #dropzone{
-        width:80%; margin:auto; padding:40px; border:3px dashed #555;
-        border-radius:10px; font-size:18px; color:#ccc;
+        width:80%; margin:30px auto; padding:40px;
+        border:3px dashed #666; border-radius:10px;
+        font-size:18px; color:#ccc; transition:.2s;
     }
     #dropzone.dragover{ border-color:#0f0; color:#0f0; }
-    button{ padding:10px 20px; font-size:18px; margin-top:25px; cursor:pointer; }
+
+    button{
+        padding:10px 20px; font-size:18px; margin:15px;
+        cursor:pointer; border:none; border-radius:6px;
+    }
+
+    .start{ background:#28d84b; }
+    .stop{ background:#ff4b4b; }
+    .uploadBtn{ background:#1e90ff; }
+
     video{
         position:absolute; top:50%; left:50%;
         transform:translate(-50%, -50%);
@@ -20,17 +32,23 @@
 </head>
 <body>
 
-<h2>Drag & Drop Videos Below</h2>
-<div id="dropzone">Drop videos here</div>
+<h2>Seamless Random Video Loop</h2>
 
-<button onclick="startLoop()">Start</button>
-<button onclick="stopLoop()">Stop</button>
+<!-- CLICK TO UPLOAD -->
+<input type="file" id="fileInput" accept="video/*" multiple hidden>
+<button class="uploadBtn" onclick="fileInput.click()">📁 Click to Upload Videos</button>
+
+<!-- DRAG & DROP STILL WORKS -->
+<div id="dropzone">Drop videos here or click Upload</div>
+
+<button class="start" onclick="startLoop()">▶ Start</button>
+<button class="stop" onclick="stopLoop()">⛔ Stop</button>
 
 <video id="v1" preload="auto"></video>
 <video id="v2" preload="auto"></video>
 
 <script>
-let videos = [];   // storage
+let videos = [];
 let playing = false;
 
 let v1 = document.getElementById("v1");
@@ -38,22 +56,36 @@ let v2 = document.getElementById("v2");
 let active = v1;
 let nextVid = v2;
 
-// Drag & Drop Handling
-const box = document.getElementById("dropzone");
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
 
-box.ondragover = e => { e.preventDefault(); box.classList.add("dragover"); };
-box.ondragleave = () => box.classList.remove("dragover");
+// CLICK UPLOAD HANDLER
+fileInput.onchange = (e) => {
+    for(let file of e.target.files){
+        if(file.type.includes("video")){
+            videos.push(URL.createObjectURL(file));
+        }
+    }
+    updateCount();
+};
 
-box.ondrop = e =>{
-    e.preventDefault(); box.classList.remove("dragover");
+// DRAG DROP
+dropzone.ondragover = e => { e.preventDefault(); dropzone.classList.add("dragover"); };
+dropzone.ondragleave = ()=> dropzone.classList.remove("dragover");
+dropzone.ondrop = e =>{
+    e.preventDefault(); dropzone.classList.remove("dragover");
     for(let f of e.dataTransfer.files){
         if(f.type.includes("video")) videos.push(URL.createObjectURL(f));
     }
-    box.textContent = videos.length+" video(s) loaded";
+    updateCount();
 };
 
+function updateCount(){
+    dropzone.textContent = `${videos.length} video(s) loaded`;
+}
+
 function startLoop(){
-    if(videos.length < 1){ alert("Drop at least one video"); return; }
+    if(videos.length < 1) return alert("Upload or drop videos first");
     playing = true;
     playCycle();
 }
@@ -66,7 +98,6 @@ function stopLoop(){
 async function playCycle(){
     while(playing){
         shuffle(videos);
-
         for(let file of videos){
             if(!playing) return;
             await seamlessPlay(file);
@@ -75,26 +106,22 @@ async function playCycle(){
 }
 
 function seamlessPlay(src){
-    return new Promise(resolve=>{
-
+    return new Promise(res=>{
         nextVid.src = src;
         nextVid.load();
-
         nextVid.oncanplay = ()=>{
             active.pause();
             nextVid.play();
-
             [active,nextVid] = [nextVid,active];
-
-            active.onended = ()=>resolve();
+            active.onended = ()=>res();
         };
     });
 }
 
 function shuffle(a){
     for(let i=a.length-1;i>0;i--){
-        let j=Math.random()* (i+1) | 0;
-        [a[i],a[j]]=[a[j],a[i]];
+        let j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]] = [a[j],a[i]];
     }
     return a;
 }
